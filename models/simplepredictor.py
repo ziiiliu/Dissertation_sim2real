@@ -8,17 +8,22 @@ from basenn import BaseNN
 import torch.nn.functional as F
 
 class SimplePredictor(BaseNN):
-    def __init__(self, input_dim, n_hidden, n_output, n_layer):
+    def __init__(self, input_dim, n_hidden, n_output, n_layer, activation=None):
         super(SimplePredictor, self).__init__(
             input_dim=input_dim,
             n_hidden=n_hidden,
             n_output=n_output,
             n_layer=n_layer,
         )
+        self.activation = activation
     
     def forward(self, X):
         res = F.relu(self.input(X))
-        for fc in self.fcs:
-            res = F.relu(fc(res))
+        if self.activation is None:
+            for fc in self.fcs:
+                res = fc(res)
+        else:
+            for fc in self.fcs:
+                res = F.relu(fc(res))
         res = self.predict(res)
         return res

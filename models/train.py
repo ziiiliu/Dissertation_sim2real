@@ -6,9 +6,14 @@ import torch
 import torch.optim as optim
 import numpy as np
 
+import os
+from datetime import datetime
+
+from torch.utils.tensorboard import SummaryWriter
+
 def train(model, X_train, y_train, X_val, y_val, 
         epochs=1000, model_save_path="ckpt/best_simplepredictor.pt",
-        lr=1e-4, opt='adam'):
+        lr=1e-4, opt='adam', writer=None):
     if opt == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     elif opt == "sgd":
@@ -31,11 +36,14 @@ def train(model, X_train, y_train, X_val, y_val,
         loss.backward()         
         optimizer.step()
     #     scheduler.step()
+        if epoch % 10 == 0:
+            writer.add_scalar('train_loss', loss, global_step=epoch)
         print(f'epoch number: {epoch+1}, MSE Loss: {loss.data}')
         
         if epoch % 100 == 0:
             val_y_preds = model(X_val)
             val_loss = loss_func(val_y_preds, y_val)
+            writer.add_scalar('validation_loss', val_loss, global_step=epoch)
             print('Validation Loss: ', val_loss.data)
             losses.append(val_loss.data.item())
             if val_loss.data < best_val_loss:
@@ -44,24 +52,31 @@ def train(model, X_train, y_train, X_val, y_val,
 
 if __name__ == "__main__":
 
-    # model = SimplePredictor(input_dim=6, n_hidden=64, n_output=3, n_layer=3)
-    n_visible = 10
-    model = PSNN(n_visible=n_visible)
+    model = SimplePredictor(input_dim=4, n_hidden=64, n_output=2, n_layer=3, activation=None)
+    print(model)
+    n_visible = 1
+    # model = PSNN(n_visible=n_visible)
     epochs = 1000
-    # model_path = "ckpt/best_simplepredictor_5_layer_2D.pt"
-    model_path = "ckpt/best_psnn_10_visible.pt"
+    model_path = "ckpt/best_simplepredictor_3_layer_linear_2D.pt"
+    # model_path = "ckpt/best_psnn_10_visible.pt"
 
     cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
     ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
 
     # print(cur_states[400:600], ref_states[400:600])
 
-    X_ps = torch.Tensor(get_past_state_X(cur_states, n_visible=n_visible))
-    # X = torch.cat([cur_states, ref_states], axis=1)[:-1]
-    X = torch.cat([X_ps, ref_states[n_visible-1:-1]], axis=1)
-    y = cur_states[n_visible:]
+    # X_ps = torch.Tensor(get_past_state_X(cur_states, n_visible=n_visible))
+    X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    # X = torch.cat([X_ps, ref_states[n_visible-1:-1]], axis=1)
+    y = cur_states[n_visible:, :-1]
 
-    print(X_ps.shape, y.shape, X.shape)
+    print(y.shape, X.shape)
+    print(X[20:40], y[20:40])
+
+    # setting up tensorboard writer and logging
+    dir_name = model_path[10:-3] + datetime.now().strftime('%b%d_%H-%M-%S')
+    log_dir = os.path.join('log', dir_name)
+    writer = SummaryWriter(log_dir=log_dir)
 
     X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
-    train(model, X_train, y_train, X_val, y_val, epochs = epochs, model_save_path=model_path, lr=5e-3, opt="adam")
+    train(model, X_train, y_train, X_val, y_val, epochs = epochs, model_save_path=model_path, lr=5e-2, opt="adam", writer=writer)

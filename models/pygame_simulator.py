@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import os
 
 """Define color"""
 RED = (200, 0, 0)
@@ -23,18 +24,32 @@ class Robot(pygame.sprite.Sprite):
 
 class Simulator(object):
 
-    def __init__(self, frequency, statelist=None, modelled_statelist=None, reflist=None):
+    def __init__(self, frequency, statelist=None, modelled_statelist=None, reflist=None, make_video=False, movie_name="movie", png_folder="animation/pngs"):
         self.frequency = frequency
         self.dt = 1/frequency
         self.statelist, self.modelled_statelist, self.reflist = statelist, modelled_statelist, reflist
         self.draw_ideal = reflist is not None
         # self.robot_x, self.robot_y = 300, 300
+        if make_video:
+            self.frame_count = 0
+            self.png_path = png_folder
+            self.png_name = "capture"
+            self.movie_name = movie_name
+
+    def make_mp4(self):
+        os.system(f"ffmpeg -r {self.frequency} -i {self.png_path}/{self.png_name}%08d.png -vcodec mpeg4 -q:v 0 -y animation/videos/{self.movie_name}.mp4")
+
+    def make_png(self, screen):
+        self.frame_count+=1
+        fullpath = self.png_path + "/" + self.png_name + "%08d.png"% self.frame_count
+        pygame.image.save(screen,fullpath)
 
     def main(self, screen):
         clock = pygame.time.Clock()
-        real_robot = Robot(init_x=300, init_y=300)
-        modelled_robot = Robot(init_x=300, init_y=300, color=GREEN)
-        ideal_robot = Robot(init_x=300, init_y=300, color=BLUE)
+        start_x, start_y = 500,300
+        real_robot = Robot(init_x=start_x, init_y=start_y)
+        modelled_robot = Robot(init_x=start_x, init_y=start_y, color=GREEN)
+        ideal_robot = Robot(init_x=start_x, init_y=start_y, color=BLUE)
 
         running = True
         
@@ -71,7 +86,7 @@ class Simulator(object):
 
                 # Calculate the difference metric between the modelled and real robots
                 displacement = pow((real_robot.x - modelled_robot.x) ** 2 + (real_robot.y - modelled_robot.y) **2, 0.5)
-                text = font.render(f"Displacement: {displacement:.2f}", True, BLACK)
+                displacement_text = font.render(f"Displacement: {displacement:.2f}", True, BLACK)
 
                 index += 1
                 # If the states are depleted, we stop.
@@ -81,12 +96,16 @@ class Simulator(object):
                 screen.blit(modelled_robot.surf,(modelled_robot.x,modelled_robot.y))
                 screen.blit(ideal_robot.surf,(ideal_robot.x,ideal_robot.y))
 
-                screen.blit(text, (450,440))
+                screen.blit(displacement_text, (450,440))
+
+                title_text = font.render(f"Simulation timestep: {self.frame_count}", True, BLACK)
+                screen.blit(displacement_text, (100,30))
 
                 pygame.draw.lines(screen, PINK, False, real_coordinates, width=4)
                 pygame.draw.lines(screen, GREEN, False, modelled_coordinates, width=4)
                 pygame.draw.lines(screen, BLUE, False, ideal_coordinates, width=4)
                 
+                self.make_png(screen)
                 pygame.display.flip()
 
 
@@ -98,8 +117,16 @@ if __name__ == '__main__':
     statelist = np.load("../first_collection/cur_states.npy")
     reflist = np.load("../first_collection/ref_states.npy")
     # modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy")
-    modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
+    # modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
+    modelled_statelist = np.load("data\simplepredictor_1_layer_linear_360_samples_differential_360_steps.npy")
     print(statelist.shape)
+    movie_name = "simplepredictor_1_layer_linear_360_samples_differential_360_steps"
+    png_folder = "animation/360_steps"
 
-    simulator = Simulator(frequency=100, statelist=statelist, modelled_statelist=modelled_statelist, reflist=reflist)
+    simulator = Simulator(frequency=100, statelist=statelist,
+                        modelled_statelist=modelled_statelist,
+                        reflist=reflist, 
+                        make_video=True, movie_name=movie_name, png_folder=png_folder)
     simulator.main(screen)
+
+    simulator.make_mp4()
