@@ -30,7 +30,7 @@ def evaluate_differential_from_origin(model, X_val, y_val, steps=1000, n_visible
         next_state = cur_state[-input_dim*2:-input_dim] + diff_state
         results.append(next_state.detach().numpy())
         cur_state = torch.cat([cur_state[input_dim:-input_dim], next_state, X_val[i,input_dim*n_visible:]])
-        print(cur_state)
+        print(i, diff_state, cur_state)
     return results
 
 
@@ -41,12 +41,14 @@ if __name__ == "__main__":
 
     cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
     ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
-    model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_360_samples.pt"
+    model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_1000_samples_shift_50.pt"
 
     model = SimplePredictor(input_dim=4, n_hidden=64, n_output=2, n_layer=1)
     model.load_state_dict(torch.load(model_path))
 
-    X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    lag_shift = 50
+    
+    X = torch.cat([cur_states[lag_shift:, :-1], ref_states[:-lag_shift, :-1]], axis=1)[:-1]
     y = cur_states[1:, :-1]
 
     n_visible=1
@@ -71,12 +73,12 @@ if __name__ == "__main__":
             X = torch.cat([X_ps, ref_states[n_visible-1:-1]], axis=1)
             y = cur_states[n_visible:]
 
-    steps = 360
+    steps = 1000
     if differential:
         eval_results = evaluate_differential_from_origin(model, X, y, steps=steps, n_visible=n_visible)
     else:
         eval_results = evaluate_from_origin(model, X, y, steps=steps, n_visible=n_visible)
     # print(eval_results)
-    with open(f"data/simplepredictor_1_layer_linear_360_samples_differential_{steps}_steps.npy", "wb") as f:
+    with open(f"data/simplepredictor_1_layer_linear_differential_{steps}_steps_shift_50.npy", "wb") as f:
         np.save(f, np.asarray(eval_results))
     

@@ -59,8 +59,13 @@ if __name__ == "__main__":
     n_visible = 1
     # model = PSNN(n_visible=n_visible)
     
-    epochs = 10000
-    model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_360_samples.pt"
+    epochs = 50000
+    num_samples = 1000
+
+    # lag_offset shifts the y to account for the lag of response of the real robot
+    lag_offset = 0
+
+    model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_1000_samples.pt"
 
     cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
     ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
@@ -68,18 +73,21 @@ if __name__ == "__main__":
     # print(cur_states[400:600], ref_states[400:600])
 
     # X_ps = torch.Tensor(get_past_state_X(cur_states, n_visible=n_visible))
-    X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    if lag_offset == 0:
+        X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    else:
+        X = torch.cat([cur_states[lag_offset:, :-1], ref_states[:-lag_offset, :-1]], axis=1)[:-1]
     # X = torch.cat([X_ps, ref_states[n_visible-1:-1]], axis=1)
     # y = torch.diff(cur_states, dim=0)[n_visible-1:]
-    y = torch.diff(cur_states[:, :-1], dim=0)[n_visible-1:]
+    y = torch.diff(cur_states[lag_offset:, :-1], dim=0)[n_visible-1:]
 
     print(y.shape, X.shape)
-    print(X[20:40], y[20:40])
+    print(X[:50], y[:50])
 
     # setting up tensorboard writer and logging
     dir_name = model_path[10:-3] + datetime.now().strftime('%b%d_%H-%M-%S')
     log_dir = os.path.join('log', dir_name)
     writer = SummaryWriter(log_dir=log_dir)
 
-    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X[:360], y[:360])
-    train_differential(model, X_train, y_train, X_val, y_val, epochs = epochs, model_save_path=model_path, lr=5e-3, opt="adam", writer=writer)
+    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X[:num_samples], y[:num_samples])
+    train_differential(model, X_train, y_train, X_val, y_val, epochs=epochs, model_save_path=model_path, lr=5e-3, opt="adam", writer=writer)

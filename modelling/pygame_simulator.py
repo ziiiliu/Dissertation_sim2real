@@ -118,10 +118,10 @@ if __name__ == '__main__':
     reflist = np.load("../first_collection/ref_states.npy")
     # modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
-    modelled_statelist = np.load("data\simplepredictor_1_layer_linear_360_samples_differential_360_steps.npy")
+    modelled_statelist = np.load("data\simplepredictor_1_layer_linear_differential_360_steps_shift_50.npy")
     print(statelist.shape)
-    movie_name = "simplepredictor_1_layer_linear_360_samples_differential_360_steps"
-    png_folder = "animation/360_steps"
+    movie_name = "simplepredictor_1_layer_linear_differential_360_steps_shift_50"
+    png_folder = "animation/360_steps_shift_50"
 
     simulator = Simulator(frequency=100, statelist=statelist,
                         modelled_statelist=modelled_statelist,
