@@ -119,7 +119,7 @@ def enable_dropout(model):
         if m.__class__.__name__.startswith('Dropout'):
             m.train()
 
-def get_preds_labels_rnn_mc(model, data_loader, ensemble_size, rounded_preds=True):
+def get_preds_labels_mc(model, data_loader, ensemble_size=5, rounded_preds=True):
     # NB: Don't worry about the labels because we'll sort them out when combining in cross-val
     model.eval()
     enable_dropout(model)
@@ -147,3 +147,92 @@ def get_preds_labels_rnn_mc(model, data_loader, ensemble_size, rounded_preds=Tru
 
 #------------------------------------------------------------------------------#
 
+######################--------------------------------##########################
+###################### Active Learning for MC Dropout ##########################
+######################--------------------------------##########################
+
+def active_mc(train_data, test_data, heuristic=None, ensemble_size=10, seed=1, 
+                            reset_weights=False, init_train_size=75, ndata_to_label=40, 
+                            al_steps=None, num_epochs=16):
+
+    BATCH_SIZE = 64
+    LEARNING_RATE = 5e-4
+
+    # Compute number of active learning steps based on ndata_to_label
+    if not al_steps:
+        al_steps = int(np.ceil((len(train_data) - init_train_size) / ndata_to_label)) + 1
+    active_train = ActiveLearningDataset(dataset=train_data, labelled=None)
+    active_train.label_randomly(init_train_size)
+
+    test_loader = DataLoader(test_data, batch_size=BATCH_SIZE)
+    set_seed(seed)
+
+    model = PSNNUncertainty().double()
+    init_weights = copy.deepcopy(model.state_dict())    
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    
+    active_ensemble_test_preds = np.zeros((al_steps, ensemble_size, len(test_data)))
+    train_sizes = []
+    test_labels = test_data.labels
+
+    best_epoch_performances = []
+
+    # Active learning loop starts here
+    for al_step in range(al_steps):
+        train_sizes.append(active_train.n_labelled)
+        print('AL STEP: {}/{}'.format(al_step + 1, al_steps), '| Train Size:', active_train.n_labelled, 
+            '| Pool Size:', active_train.n_unlabelled)
+
+        # Loading the training and pool data
+        active_train_loader = DataLoader(active_train, batch_size=BATCH_SIZE)
+        active_pool_loader = DataLoader(active_train.pool, batch_size=BATCH_SIZE)
+
+        if reset_weights:
+            model.load_state_dict(init_weights)
+            optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+        _, _, val_accuracies = train_differential_psnn(model, active_train_loader, test_loader, num_epochs, optimizer, 
+                                             device)
+        best_epoch_performances.append(max(val_accuracies))
+
+        # Evaluate model on pool set and get uncertainties
+        pool_preds, _ = get_preds_labels_mc(model, active_pool_loader, ensemble_size=ensemble_size, rounded_preds=False)
+        
+        # Get pool set uncertainties to determine labelling
+        if heuristic is None: # random labelling
+            active_train.label_randomly(min(ndata_to_label, active_train.n_unlabelled))
+        elif active_train.n_unlabelled > ndata_to_label: 
+            if heuristic == get_batch_bald:
+                uncertain_indices = get_batch_bald(pool_preds, ndata_to_label)
+            else:
+                uncertainties_pool = heuristic(pool_preds)
+                uncertain_indices = np.argpartition(uncertainties_pool, -ndata_to_label)[-ndata_to_label:]
+            active_train.label(uncertain_indices)
+        else: # last al_step is to label remainder of pool < ndata_to_label
+            active_train.label(np.arange(active_train.n_unlabelled))
+
+    # Evaluate model on test set 
+    test_preds, _ = get_preds_labels(model, test_loader, rounded_preds=False)
+    active_ensemble_test_preds[al_step, :] = test_preds
+
+    train_sizes = np.array(train_sizes) / len(train_data)
+    return active_ensemble_test_preds, train_sizes
+
+#---------------------------------------------------------------------------#
+
+if __name__ == "__main__":
+
+    n_visible=1
+
+    cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
+    ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
+    X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    y = torch.diff(cur_states[:, :-1], dim=0)[n_visible-1:]
+
+    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X[:360], y[:360])
+    train_data = VelDataset(X_train, y_train)
+    test_data = VelDataset(X_val, y_val)
+
+    active_mc(train_data, test_data, heuristic=None, ensemble_size=10, init_seed=1, 
+                            reset_weights=False, init_train_size=75, ndata_to_label=40, 
+                            al_steps=None, num_epochs=16)
