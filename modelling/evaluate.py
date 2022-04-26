@@ -1,5 +1,5 @@
-from simplepredictor import SimplePredictor
-from paststates_nn import PSNN
+from models.simplepredictor import SimplePredictor
+from models.paststates_nn import PSNN
 import torch
 import numpy as np
 from utils import train_val_test_split, get_past_state_X
@@ -36,22 +36,29 @@ def evaluate_differential_from_origin(model, X_val, y_val, steps=1000, n_visible
 
 if __name__ == "__main__":
 
-    include_past = False
+    include_past = True
     differential = True
+    n_visible=1
 
-    cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
-    ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
-    model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_1000_samples_shift_50.pt"
+    # cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
+    # ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
+    # model_path = "ckpt/best_simplepredictor_differential_1_layer_linear_2D_1000_samples_shift_50.pt"
 
-    model = SimplePredictor(input_dim=4, n_hidden=64, n_output=2, n_layer=1)
+    cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states.npy"))
+    ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
+    model_path = "ckpt/2nd_collect_psnn_50_visible_differential.pt"
+
+    # model = SimplePredictor(input_dim=4, n_hidden=64, n_output=2, n_layer=1)
+    model = PSNN(n_visible=n_visible, n_output=3, n_layer=3)
     model.load_state_dict(torch.load(model_path))
 
-    lag_shift = 50
-    
-    X = torch.cat([cur_states[lag_shift:, :-1], ref_states[:-lag_shift, :-1]], axis=1)[:-1]
-    y = cur_states[1:, :-1]
+    lag_shift = 0
 
-    n_visible=1
+    if lag_shift == 0:
+        X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
+    else:
+        X = torch.cat([cur_states[lag_shift:, :-1], ref_states[:-lag_shift, :-1]], axis=1)[:-1]
+    y = cur_states[1:, :-1]
 
     if include_past:
         if differential:

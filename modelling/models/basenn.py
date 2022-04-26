@@ -13,7 +13,7 @@ class BaseNN(nn.Module):
     def __init__(self, 
                 input_dim=3,
                 n_hidden=64,
-                n_output=3, 
+                n_output=3,
                 n_layer=3,):
         super(BaseNN, self).__init__()
         self.include_past = False
