@@ -17,7 +17,7 @@ def inverse_sample(cur_samples, num_bins=100, max_val=1, plot=False):
     return bins[:-1], prob_dist_inv
 
 # TODO: Finish this method
-def inverse_sample_nd(cur_samples, dim=2, num_bins, max_val=1, plot=False):
+def inverse_sample_nd(cur_samples, num_bins, dim=2, max_val=1, plot=False):
     return
 
 if __name__ == "__main__":

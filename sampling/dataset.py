@@ -7,7 +7,7 @@ class VelDataset(Dataset):
         self.y = y
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.y)
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
