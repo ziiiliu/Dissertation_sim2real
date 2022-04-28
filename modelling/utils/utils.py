@@ -55,12 +55,12 @@ def train_val_test_split(X, y, train_ratio=0.7, val_ratio=0.2, test_ratio=0.1, r
     
     return X_train, X_val, X_test, y_train, y_val, y_test
 
-def get_past_state_X(X, n_visible=5):
+def get_past_state_X(X, n_visible=5, input_dim=2):
     X_ps = []
     temp = X[:n_visible].reshape(-1)
     for i in range(n_visible, len(X)):
         X_ps.append(temp)
-        temp = np.append((temp[3:]), X[i])
+        temp = np.append((temp[input_dim:]), X[i])
     return np.stack(X_ps)
 
 

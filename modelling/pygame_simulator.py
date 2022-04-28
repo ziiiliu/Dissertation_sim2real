@@ -114,14 +114,19 @@ if __name__ == '__main__':
     pygame.display.set_caption("Move")
     screen = pygame.display.set_mode((640,480))
 
-    statelist = np.load("../first_collection/cur_states.npy")
-    reflist = np.load("../first_collection/ref_states.npy")
+    # statelist = np.load("../first_collection/cur_states.npy")
+    # reflist = np.load("../first_collection/ref_states.npy")
+    statelist = np.load("../second_collection_slower/cur_states.npy")
+    reflist = np.load("../second_collection_slower/ref_states.npy")
+
     # modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
-    modelled_statelist = np.load("data\simplepredictor_1_layer_linear_differential_360_steps_shift_50.npy")
+    # modelled_statelist = np.load("data\simplepredictor_1_layer_linear_differential_360_steps_shift_50.npy")
+    modelled_statelist = np.load("data/2nd_psnn_visible_100_differential_10000_steps.npy")
     print(statelist.shape)
-    movie_name = "simplepredictor_1_layer_linear_differential_360_steps_shift_50"
-    png_folder = "animation/360_steps_shift_50"
+
+    movie_name = "2nd_psnn_visible_100_differential_10000_steps"
+    png_folder = "animation/2nd_100_visible_10000_steps"
 
     simulator = Simulator(frequency=100, statelist=statelist,
                         modelled_statelist=modelled_statelist,
