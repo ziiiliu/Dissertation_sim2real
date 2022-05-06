@@ -274,8 +274,8 @@ if __name__ == "__main__":
     data_dir = "data/active_1000_var_40_step_psnn_1_visible_ensemble"
     Path(data_dir).mkdir(parents=True, exist_ok=True)
 
-    cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
-    ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
+    cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states.npy"))
+    ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
     X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
     y = torch.diff(cur_states[:, :-1], dim=0)[n_visible-1:]
 
