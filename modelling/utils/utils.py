@@ -63,6 +63,17 @@ def get_past_state_X(X, n_visible=5, input_dim=2):
         temp = np.append((temp[input_dim:]), X[i])
     return np.stack(X_ps)
 
+def get_gleaned_past_state_X(X, n_visible=50, input_dim=2, interval=10):
+    """
+    This function takes the past states into account but only periodically to push down the input dimension without losing information
+    from the past.
+    """
+    X_ps = []
+    for i in range(n_visible, len(X)):
+        temp = X[i-n_visible+interval:i+1:interval].reshape(-1)
+        X_ps.append(temp) 
+    return np.stack(X_ps)
+
 
 if __name__ == "__main__":
 

@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 import os
+from pathlib import Path
 
 """Define color"""
 RED = (200, 0, 0)
@@ -24,10 +25,11 @@ class Robot(pygame.sprite.Sprite):
 
 class Simulator(object):
 
-    def __init__(self, frequency, statelist=None, modelled_statelist=None, reflist=None, make_video=False, movie_name="movie", png_folder="animation/pngs"):
+    def __init__(self, frequency, statelist=None, modelled_statelist=None, reflist=None, make_video=False, movie_name="movie", png_folder="animation/pngs", n_visible=1, max_len=10000):
         self.frequency = frequency
         self.dt = 1/frequency
-        self.statelist, self.modelled_statelist, self.reflist = statelist, modelled_statelist, reflist
+        # account for the n_visible shifts
+        self.statelist, self.modelled_statelist, self.reflist = statelist[n_visible:], modelled_statelist, reflist[n_visible:]
         self.draw_ideal = reflist is not None
         # self.robot_x, self.robot_y = 300, 300
         if make_video:
@@ -35,6 +37,9 @@ class Simulator(object):
             self.png_path = png_folder
             self.png_name = "capture"
             self.movie_name = movie_name
+            Path(png_folder).mkdir(parents=True, exist_ok=True)
+
+        self.max_len = max_len
 
     def make_mp4(self):
         os.system(f"ffmpeg -r {self.frequency} -i {self.png_path}/{self.png_name}%08d.png -vcodec mpeg4 -q:v 0 -y animation/videos/{self.movie_name}.mp4")
@@ -47,7 +52,7 @@ class Simulator(object):
     def main(self, screen):
         clock = pygame.time.Clock()
         start_x, start_y = 500,300
-        real_robot = Robot(init_x=start_x, init_y=start_y)
+        real_robot = Robot(init_x=start_x, init_y=start_y, color=RED)
         modelled_robot = Robot(init_x=start_x, init_y=start_y, color=GREEN)
         ideal_robot = Robot(init_x=start_x, init_y=start_y, color=BLUE)
 
@@ -90,7 +95,7 @@ class Simulator(object):
 
                 index += 1
                 # If the states are depleted, we stop.
-                if index >= len(self.statelist) or index >= len(self.modelled_statelist):
+                if index >= len(self.statelist) or index >= len(self.modelled_statelist) or index >= self.max_len:
                     running=False
                 screen.blit(real_robot.surf,(real_robot.x,real_robot.y))
                 screen.blit(modelled_robot.surf,(modelled_robot.x,modelled_robot.y))
@@ -99,7 +104,13 @@ class Simulator(object):
                 screen.blit(displacement_text, (450,440))
 
                 title_text = font.render(f"Simulation timestep: {self.frame_count}", True, BLACK)
-                screen.blit(displacement_text, (100,30))
+                legend_real_text = font.render(f"Red: real", True, RED)
+                legend_ideal_text = font.render(f"Blue: ideal", True, BLUE)
+                legend_modelled_text = font.render(f"Green: modelled", True, GREEN)
+                screen.blit(title_text, (100,30))
+                screen.blit(legend_real_text, (20,100))
+                screen.blit(legend_ideal_text, (20,120))
+                screen.blit(legend_modelled_text, (20,140))
 
                 pygame.draw.lines(screen, PINK, False, real_coordinates, width=4)
                 pygame.draw.lines(screen, GREEN, False, modelled_coordinates, width=4)
@@ -107,6 +118,7 @@ class Simulator(object):
                 
                 self.make_png(screen)
                 pygame.display.flip()
+        return real_coordinates, ideal_coordinates, modelled_coordinates
 
 
 if __name__ == '__main__':
@@ -116,22 +128,29 @@ if __name__ == '__main__':
 
     # statelist = np.load("../first_collection/cur_states.npy")
     # reflist = np.load("../first_collection/ref_states.npy")
-    statelist = np.load("../second_collection_slower/cur_states.npy")
-    reflist = np.load("../second_collection_slower/ref_states.npy")
+    statelist = np.load("../second_collection_corrected/cur_states.npy")
+    reflist = np.load("../second_collection_corrected/ref_states.npy")
 
     # modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data\simplepredictor_1_layer_linear_differential_360_steps_shift_50.npy")
-    modelled_statelist = np.load("data/2nd_psnn_visible_100_differential_10000_steps.npy")
+    modelled_statelist = np.load("data_may/2nd_corrected_psnn_visible_10_differential.npy")
     print(statelist.shape)
 
-    movie_name = "2nd_psnn_visible_100_differential_10000_steps"
-    png_folder = "animation/2nd_100_visible_10000_steps"
+    movie_name = "2nd_corrected_psnn_visible_10_differential"
+    png_folder = "animation/2nd_corrected_psnn_visible_10_differential"
 
     simulator = Simulator(frequency=100, statelist=statelist,
                         modelled_statelist=modelled_statelist,
                         reflist=reflist, 
-                        make_video=True, movie_name=movie_name, png_folder=png_folder)
-    simulator.main(screen)
+                        make_video=True, movie_name=movie_name, png_folder=png_folder, n_visible=10, max_len=5000)
+    
+    real_coordinates, ideal_coordinates, modelled_coordinates = simulator.main(screen)
+
+    Path(os.path.join("trajectories", movie_name)).mkdir(parents=True, exist_ok=True)
+
+    np.save(os.path.join("trajectories", movie_name, "real.npy"), real_coordinates)
+    np.save(os.path.join("trajectories", movie_name, "ideal.npy"), ideal_coordinates)
+    np.save(os.path.join("trajectories", movie_name, "modelled.npy"), modelled_coordinates)
 
     simulator.make_mp4()
