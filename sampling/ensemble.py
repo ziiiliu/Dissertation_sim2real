@@ -19,8 +19,10 @@ import torch.optim as optim
 
 from baal.active import ActiveLearningDataset
 import copy
+from pathlib import Path
+import os
 
-from utils import set_seed, train_val_test_split
+from utils import set_seed, train_val_test_split, compare_performances
 from metrics import get_batch_bald, get_expected_entropy, get_mutual_info, get_pred_var
 from dataset import VelDataset
 
@@ -187,7 +189,7 @@ def active_ensemble(train_data, test_data, heuristic=None, ensemble_size=10, ini
 
     # Compute number of active learning steps based on ndata_to_label
     if not al_steps:
-        al_steps = int(np.ceil((len(train_data) - init_train_size) / ndata_to_label)) + 1
+        al_steps = int(np.ceil((len(train_data) - init_train_size) / ndata_to_label))
     active_train = ActiveLearningDataset(dataset=train_data, labelled=None)
     active_train.label_randomly(init_train_size)
 
@@ -210,7 +212,7 @@ def active_ensemble(train_data, test_data, heuristic=None, ensemble_size=10, ini
     test_labels = test_data.y
 
     # Active learning loop starts here
-    for al_step in range(al_steps-1):
+    for al_step in range(al_steps):
         train_sizes.append(active_train.n_labelled)
 
         # Loading the training and pool data
@@ -253,11 +255,8 @@ def active_ensemble(train_data, test_data, heuristic=None, ensemble_size=10, ini
                 uncertain_indices = get_batch_bald(ensemble_pool_preds, ndata_to_label)
             else:
                 uncertainties_pool = heuristic(ensemble_pool_preds)
-                print(uncertainties_pool)
                 uncertainties_pool = np.linalg.norm(uncertainties_pool, axis=1)
-                print(ensemble_pool_preds)
                 # print(uncertainties_pool.shape)
-                print(uncertainties_pool)
                 uncertain_indices = np.argpartition(uncertainties_pool, -ndata_to_label)[-ndata_to_label:]
             active_train.label(uncertain_indices)
         else: # last al_step is to label remainder of pool < ndata_to_label
@@ -272,6 +271,9 @@ if __name__ == "__main__":
     n_visible = 1
     vel_dim = 2
 
+    data_dir = "data/active_1000_var_40_step_psnn_1_visible_ensemble"
+    Path(data_dir).mkdir(parents=True, exist_ok=True)
+
     cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
     ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
     X = torch.cat([cur_states[:, :-1], ref_states[:, :-1]], axis=1)[:-1]
@@ -281,6 +283,11 @@ if __name__ == "__main__":
     train_data = VelDataset(X_train, y_train)
     test_data = VelDataset(X_val, y_val)
 
-    active_ensemble(train_data, test_data, heuristic=None, ensemble_size=5, init_seed=1, 
+    active_ensemble_test_preds, train_sizes = active_ensemble(train_data, test_data, heuristic=get_pred_var, ensemble_size=5, init_seed=1, 
                             reset_weights=False, init_train_size=75, ndata_to_label=40, 
                             al_steps=None, num_epochs=100, vel_dim=vel_dim)
+    
+    np.save(os.path.join(data_dir, "ens_test_preds.npy"), active_ensemble_test_preds)
+    np.save(os.path.join(data_dir, "ens_train_sizes.npy"), train_sizes)
+    np.save(os.path.join(data_dir, "ens_test_labels.npy"), y_val)
+    compare_performances([active_ensemble_test_preds], y_val, train_sizes)
