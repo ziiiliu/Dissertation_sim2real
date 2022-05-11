@@ -1,6 +1,7 @@
 
+from turtle import forward
 import torch.nn.functional as F
-from torch.nn import LSTM
+from torch.nn import LSTM, RNN
 import torch
 import torch.optim as optim
 import numpy as np
@@ -13,6 +14,27 @@ from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(f"Current device: {device}")
+
+class RNNModel(torch.nn.Module):
+    def __init__(self, input_dim, hidden_size, num_layers=3, batch_first=True, proj_size=2) -> None:
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.rnn = RNN(input_size=input_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=batch_first)
+        self.output = torch.nn.Linear(hidden_size, proj_size)
+    
+    def forward(self, X):
+
+        h0 = torch.zeros(self.num_layers, X.size(0), self.hidden_size).requires_grad_()
+        out, h0 = self.rnn(X, h0.detach())
+
+        # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
+        # so that it can fit into the fully connected layer
+        out = out[:, -1, :]
+
+        res = self.output(out)
+        return res
+
 
 def train_rnn_differential(model, X_train, y_train, X_val, y_val, 
         epochs=1000, model_save_path="ckpt_may/best_simplepredictor.pt",
@@ -67,10 +89,10 @@ if __name__ == "__main__":
 
     gleaning=False
 
-
-    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
+    rnn = RNNModel(input_dim=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
+    # rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
     rnn.to(device)
-    model_path = "ckpt_may/3_layer_lstm_10_visible.pt"
+    model_path = "ckpt_may/3_layer_rnn_10_visible.pt"
 
     cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states_smoothed.npy"))
     ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
