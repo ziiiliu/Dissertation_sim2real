@@ -97,6 +97,7 @@ class Simulator(object):
                 # If the states are depleted, we stop.
                 if index >= len(self.statelist) or index >= len(self.modelled_statelist) or index >= self.max_len:
                     running=False
+
                 screen.blit(real_robot.surf,(real_robot.x,real_robot.y))
                 screen.blit(modelled_robot.surf,(modelled_robot.x,modelled_robot.y))
                 screen.blit(ideal_robot.surf,(ideal_robot.x,ideal_robot.y))
@@ -128,17 +129,18 @@ if __name__ == '__main__':
 
     # statelist = np.load("../first_collection/cur_states.npy")
     # reflist = np.load("../first_collection/ref_states.npy")
-    statelist = np.load("../second_collection_corrected/cur_states.npy")
-    reflist = np.load("../second_collection_corrected/ref_states.npy")
+    statelist = np.load("../second_collection_slower/cur_states.npy")
+    reflist = np.load("../second_collection_slower/ref_states.npy")
 
     # modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data/psnn_visible_5_5000_steps_from_start.npy")
     # modelled_statelist = np.load("data\simplepredictor_1_layer_linear_differential_360_steps_shift_50.npy")
-    modelled_statelist = np.load("data_may/2nd_corrected_psnn_visible_10_differential.npy")
-    print(statelist.shape)
+    modelled_statelist = np.load("data/simplepredictor_5000_steps_from_start.npy", allow_pickle=True)
+    modelled_statelist = np.array([np.array(s) for s in modelled_statelist])
+    print(modelled_statelist)
 
-    movie_name = "2nd_corrected_psnn_visible_10_differential"
-    png_folder = "animation/2nd_corrected_psnn_visible_10_differential"
+    movie_name = "simplepredictor_5000_steps_from_start"
+    png_folder = "animation/" + movie_name
 
     simulator = Simulator(frequency=100, statelist=statelist,
                         modelled_statelist=modelled_statelist,

@@ -12,6 +12,8 @@ import os
 
 from torch.utils.tensorboard import SummaryWriter
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 def print_model(model):
     print(model)
     for name, param in model.named_parameters():

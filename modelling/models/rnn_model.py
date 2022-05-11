@@ -11,8 +11,11 @@ from datetime import datetime
 from utils import get_past_state_X, train_val_test_split
 from torch.utils.tensorboard import SummaryWriter
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(f"Current device: {device}")
+
 def train_rnn_differential(model, X_train, y_train, X_val, y_val, 
-        epochs=1000, model_save_path="ckpt/best_simplepredictor.pt",
+        epochs=1000, model_save_path="ckpt_may/best_simplepredictor.pt",
         lr=1e-4, opt='adam', writer=None):
     if opt == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -57,27 +60,45 @@ if __name__ == "__main__":
     # n_visible here is equivalent to the sequence length, 
     n_visible = 10
     epochs = 3000
+    input_dim = 2
+    lag_offset = 0
+    interval = 5
+    
 
-    rnn = LSTM(input_size=3, hidden_size=32, num_layers=3, batch_first=True, proj_size=3)
-    model_path = "ckpt/best_3_layer_lstm_10_visible.pt"
+    gleaning=False
 
-    cur_states = torch.Tensor(np.load("../first_collection/cur_states.npy"))
-    ref_states = torch.Tensor(np.load("../first_collection/ref_states.npy"))
+
+    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
+    rnn.to(device)
+    model_path = "ckpt_may/3_layer_lstm_10_visible.pt"
+
+    cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states_smoothed.npy"))
+    ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
+    data_size = len(ref_states)
 
     # print(cur_states[400:600], ref_states[400:600])
 
-    X_ps = torch.Tensor(get_past_state_X(cur_states, n_visible=n_visible))
-    # X = torch.cat([cur_states, ref_states], axis=1)[:-1]
-    X = torch.cat([X_ps, ref_states[n_visible-1:-1]], axis=1)
-    y = cur_states[n_visible:]
+    if n_visible > 1:
+        if gleaning:
+            X_ps = torch.Tensor(get_gleaned_past_state_X(cur_states[:, :input_dim], n_visible=n_visible, input_dim=input_dim, interval=interval))
+        else:
+            X_ps = torch.Tensor(get_past_state_X(cur_states[:, :input_dim], n_visible=n_visible, input_dim=input_dim))
+        X = torch.cat([X_ps[lag_offset:], ref_states[n_visible-1:data_size-lag_offset-1, :input_dim]], axis=1)
+    elif n_visible == 1:
+        X = torch.cat([cur_states[lag_offset:, :input_dim], ref_states[:data_size-lag_offset, :input_dim]], axis=1)[:-1]
+    else:
+        raise ValueError("n_visible defined incorrectly")
 
-    X = X.reshape((len(X), n_visible+1, 3))
+    y = torch.diff(cur_states[lag_offset:, :input_dim], dim=0)[n_visible-1:]
+
+    X = X.reshape((len(X), n_visible+1, input_dim))
+    X, y = X.to(device), y.to(device)
 
     print(X_ps.shape, y.shape, X.shape)
 
     # setting up tensorboard writer and logging
     dir_name = model_path[10:-3] + datetime.now().strftime('%b%d_%H-%M-%S')
-    log_dir = os.path.join('log', dir_name)
+    log_dir = os.path.join('log_may', dir_name)
     writer = SummaryWriter(log_dir=log_dir)
 
     X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)

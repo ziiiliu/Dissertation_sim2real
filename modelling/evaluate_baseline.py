@@ -111,7 +111,7 @@ if __name__ == "__main__":
         X = torch.cat([cur_states[lag_shift:, :input_dim], ref_states[:data_size-lag_shift, :input_dim]], axis=1)[:-1]
         y = torch.diff(cur_states[lag_shift:, :input_dim], dim=0)[n_visible-1:]
 
-    steps = 5000
+    steps = 1000
     if model_name != "GP":
         eval_results = evaluate_differential_from_origin(model, X, y, steps=steps, n_visible=n_visible, input_dim=input_dim)
     else:
