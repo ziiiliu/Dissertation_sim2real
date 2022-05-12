@@ -25,8 +25,8 @@ class RNNModel(torch.nn.Module):
     
     def forward(self, X):
 
-        h0 = torch.zeros(self.num_layers, X.size(0), self.hidden_size).requires_grad_()
-        out, h0 = self.rnn(X, h0.detach())
+        h0 = torch.zeros(self.num_layers, X.size(0), self.hidden_size).requires_grad_().to(device)
+        out, h0 = self.rnn(X, h0)
 
         # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
         # so that it can fit into the fully connected layer
