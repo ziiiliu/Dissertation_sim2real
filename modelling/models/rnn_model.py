@@ -9,7 +9,7 @@ import numpy as np
 import os
 from datetime import datetime
 
-from utils import get_past_state_X, train_val_test_split
+from .utils import get_past_state_X, train_val_test_split
 from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -53,8 +53,10 @@ def train_rnn_differential(model, X_train, y_train, X_val, y_val,
     for epoch in range(epochs):
     
         best_val_loss = float('inf')
-        
-        prediction = torch.squeeze(model(X_train)[1][0])
+        res = model(X_train)
+        print(res.shape)
+        prediction = torch.squeeze(res[1][0])
+        print(prediction.shape)
         loss = loss_func(prediction, y_train)
 
         optimizer.zero_grad()
@@ -89,10 +91,10 @@ if __name__ == "__main__":
 
     gleaning=False
 
-    rnn = RNNModel(input_dim=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
-    # rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
+    # rnn = RNNModel(input_dim=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
+    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
     rnn.to(device)
-    model_path = "ckpt_may/3_layer_rnn_10_visible.pt"
+    model_path = "ckpt_may/3_layer_lstm_10_visible.pt"
 
     cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states_smoothed.npy"))
     ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
