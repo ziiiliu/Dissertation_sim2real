@@ -98,7 +98,7 @@ if __name__ == "__main__":
     gleaning=False
 
     # rnn = RNNModel(input_dim=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
-    rnn = LSTM(input_size=input_dim, hidden_size=64, num_layers=5, batch_first=True, proj_size=input_dim)
+    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=5, batch_first=True, proj_size=input_dim)
     rnn.to(device)
     model_path = "ckpt_may/5_layer_64_hidden_lstm_10_visible.pt"
 
