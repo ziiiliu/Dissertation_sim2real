@@ -98,9 +98,9 @@ if __name__ == "__main__":
     gleaning=False
 
     # rnn = RNNModel(input_dim=input_dim, hidden_size=32, num_layers=3, batch_first=True, proj_size=input_dim)
-    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=5, batch_first=True, proj_size=input_dim)
+    rnn = LSTM(input_size=input_dim, hidden_size=32, num_layers=1, batch_first=True, proj_size=input_dim)
     rnn.to(device)
-    model_path = "ckpt_may/5_layer_64_hidden_lstm_10_visible.pt"
+    model_path = "ckpt_may/1_layer_64_hidden_lstm_10_visible.pt"
 
     cur_states = torch.Tensor(np.load("../second_collection_slower/cur_states_smoothed.npy"))
     ref_states = torch.Tensor(np.load("../second_collection_slower/ref_states.npy"))
