@@ -36,7 +36,7 @@ class RNNModel(torch.nn.Module):
         return res
 
 
-def train_rnn_differential(model, X_train, y_train, X_val, y_val, 
+def train_rnn_differential(model, X_train, y_train, X_val, y_val, is_lstm,
         epochs=1000, model_save_path="ckpt_may/best_simplepredictor.pt",
         lr=1e-4, opt='adam', writer=None):
     if opt == "adam":
@@ -54,8 +54,11 @@ def train_rnn_differential(model, X_train, y_train, X_val, y_val,
     
         best_val_loss = float('inf')
         res = model(X_train)
-        prediction = torch.squeeze(res[0][:, -1, :])
-        print(prediction.shape)
+        if is_lstm:
+            prediction = torch.squeeze(res[0][:, -1, :])
+        else:
+            prediction = res
+        # print(prediction.shape)
         loss = loss_func(prediction, y_train)
 
         optimizer.zero_grad()
@@ -68,8 +71,11 @@ def train_rnn_differential(model, X_train, y_train, X_val, y_val,
         print(f'epoch number: {epoch+1}, MSE Loss: {loss.data}')
         
         if epoch % 100 == 0:
-            val_y_preds = torch.squeeze(model(X_val)[1][0])
-
+            val_res = model(X_val)
+            if is_lstm:
+                val_y_preds = torch.squeeze(val_res[0][:, -1, :])
+            else:
+                val_y_preds = val_res
             val_loss = loss_func(val_y_preds, y_val)
             writer.add_scalar('validation_loss', val_loss, global_step=epoch)
             print('Validation Loss: ', val_loss.data)
@@ -86,6 +92,7 @@ if __name__ == "__main__":
     input_dim = 2
     lag_offset = 0
     interval = 5
+    is_lstm = True
     
 
     gleaning=False
@@ -125,4 +132,4 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=log_dir)
 
     X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
-    train_rnn_differential(rnn, X_train, y_train, X_val, y_val, epochs = epochs, model_save_path=model_path, lr=5e-3, opt="adam", writer=writer)
+    train_rnn_differential(rnn, X_train, y_train, X_val, y_val, is_lstm=is_lstm, epochs = epochs, model_save_path=model_path, lr=5e-3, opt="adam", writer=writer)
