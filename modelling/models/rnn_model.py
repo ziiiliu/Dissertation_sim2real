@@ -55,7 +55,7 @@ def train_rnn_differential(model, X_train, y_train, X_val, y_val,
         best_val_loss = float('inf')
         res = model(X_train)
         print(res.shape)
-        prediction = torch.squeeze(res[1][0])
+        prediction = torch.squeeze(res[0][:, -1, :])
         print(prediction.shape)
         loss = loss_func(prediction, y_train)
 
