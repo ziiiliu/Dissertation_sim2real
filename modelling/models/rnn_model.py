@@ -9,7 +9,7 @@ import numpy as np
 import os
 from datetime import datetime
 
-from .utils import get_past_state_X, train_val_test_split
+from utils import get_past_state_X, train_val_test_split
 from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
